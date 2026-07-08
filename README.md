@@ -1,49 +1,101 @@
 # WinQuickArchiver
 
-フォルダを右クリック → 形式と圧縮率を選ぶ → 保存先を選ぶと、その場所へ
-アーカイブを **直接** 書き出します（一時ファイルも移動もなし・大容量向き）。
+右クリック 1つで、フォルダを **好きな保存先へ直接** アーカイブ（`tar.zst` ほか）にする、
+Windows 用の軽量ツールです。追加ソフトのインストールは不要で、Windows に元から入っている
+`tar` だけで動きます。
 
-- **エンジン**: Windows 標準の `bsdtar`（libzstd / liblzma / zlib / bz2lib 内蔵）。追加ソフト不要。
-- **対応形式**: `tar.zst`（既定）/ `tar.gz` / `tar.bz2` / `zip`
-- **圧縮率**: 軽め（既定・高速）/ 標準 / 最大
-- tar 系はファイル名を **UTF-8(pax)** で格納 → Linux の `tar` でも文字化けしません。
-- zstd は全 CPU コアでマルチスレッド圧縮。
+> **English summary**
+> A tiny Windows right-click tool that compresses a folder **straight into a
+> destination you choose** as `tar.zst` (default), `tar.gz`, `tar.bz2`, or `zip`.
+> It uses only Windows' built-in `bsdtar` — nothing else to install, no admin
+> rights, no network access. Public domain (Unlicense). The UI is currently in
+> Japanese. To install: download the folder, then double-click **`Install.cmd`**.
 
-## インストール
+---
 
-`Install.ps1` を右クリック →「PowerShell で実行」。
-（管理者不要・HKCU のみ。エクスプローラーを再起動すると確実に反映）
+## これは何？
+
+- フォルダを右クリック →「**WinQuickArchiver で圧縮…**」→ 形式と圧縮率を選ぶ → 保存先を選ぶ。
+  それだけで、選んだ場所に `フォルダ名.tar.zst`（等）が**直接**作られます。
+- 一時ファイルを作らず、後から移動する手間もないので、**大きいフォルダでも速い**です。
+- `tar` 系はファイル名を **UTF-8** で保存するので、**Linux で展開しても日本語が文字化けしません**。
+
+## 動作要件
+
+- **Windows 11**（推奨）。`tar.zst` は Windows 11 同梱の `tar`（libzstd 内蔵）が必要です。
+  - `tar.gz` / `tar.bz2` / `zip` は Windows 10 でも動きます。
+  - 確認方法：PowerShell で `tar --version` を実行し、`libzstd` の表示があれば `tar.zst` 対応です。
+
+## インストール（かんたん3ステップ）
+
+1. この「Code」→「Download ZIP」でダウンロードし、**展開（解凍）**します。
+   （またはお好きな場所にフォルダを置きます。例：`ドキュメント\winquickarchiver`）
+2. フォルダ内の **`Install.cmd`** を**ダブルクリック**します。
+3. 青い画面が出て「完了しました」と表示されれば成功です。ウィンドウは閉じてOK。
+
+> インターネットから入手したファイルなので、初回に「WindowsによってPCが保護されました」や
+> 「セキュリティの警告」が出ることがあります。内容を確認のうえ「詳細情報」→「実行」または
+> 「開く」で進めてください（本ツールは管理者権限を使わず、変更は下記のとおり最小限です）。
 
 ## 使い方
 
-- **1 フォルダ**: 右クリック →「WinQuickArchiver で圧縮…」
-  - Windows 11 で最上段に出ないときは「その他のオプションを表示」(Shift+F10) の中。
-- **複数選択**: 選択 → 右クリック → **送る** → 「WinQuickArchiver」
-- 保存先ダイアログは既定で **デスクトップ** を開きます。
+- **フォルダ1つ**：フォルダを右クリック →「**WinQuickArchiver で圧縮…**」
+  - Windows 11 でメニューに見当たらないときは「**その他のオプションを表示**」（`Shift + F10`）の中にあります。
+- **複数まとめて**：複数のフォルダ/ファイルを選択 → 右クリック → **送る** → 「**WinQuickArchiver**」
+- ダイアログで **形式** と **圧縮率** を選び、次に **保存先**（最初はデスクトップが開きます）を選ぶだけ。
 
-## 既定値の変更
+### 選べる形式と圧縮率
 
-`WinQuickArchiver.ps1` の `$FORMATS` テーブルでレベル値を調整できます
-（例: `tar.zst` の `light=2` を別の値へ）。
+| 形式 | 用途の目安 |
+|---|---|
+| `tar.zst`（既定） | 速くて高圧縮。Linux とのやり取りにおすすめ |
+| `tar.gz` | 最も広く使える定番 |
+| `tar.bz2` | gz より少し高圧縮 |
+| `zip` | Windows/Mac で開きやすい |
+
+圧縮率は **軽め（既定・高速）/ 標準 / 最大** から選べます。
+
+## このツールが PC にすること（安全性）
+
+透明性のために明記します。**管理者権限は使いません。**
+
+- 追加する登録は **現在のユーザーのみ（HKCU）** の以下だけです：
+  - 右クリックメニュー用のレジストリ項目 1つ
+  - 「送る」ショートカット 1つ
+- 圧縮は Windows 標準の `tar.exe` を呼ぶだけ。**ネットワーク通信・常駐・データ収集は一切ありません。**
+- すべて **`Uninstall.cmd` で元に戻せます**。
+
+## アンインストール
+
+1. **`Uninstall.cmd`** をダブルクリック（右クリック項目と「送る」を削除します）。
+2. 最後に、このフォルダごと削除すれば完了です。
+
+## 困ったとき
+
+- **メニューが出ない**：`Install.cmd` 実行後にエクスプローラーは自動再起動しますが、
+  反映されない場合はサインアウト→サインイン、または PC 再起動をお試しください。
+  Windows 11 では「その他のオプションを表示」の中も確認してください。
+- **クラウド同期フォルダに置く場合**（OneDrive/Dropbox 等）：ファイルが「オンラインのみ」に
+  なると右クリックが失敗することがあります。フォルダを「**このデバイス上に常に保持する**」に
+  設定するか、`C:` 直下など同期対象外の場所に置いてください。
+- **`tar.zst` が作れない**：お使いの Windows の `tar` が libzstd 非対応の可能性があります
+  （`tar --version` で確認）。その場合は `tar.gz` などをご利用ください。
 
 ## Linux 側での展開
 
 ```bash
-tar --zstd -xf name.tar.zst     # zstd
-tar -xzf   name.tar.gz          # gzip
-tar -xjf   name.tar.bz2         # bzip2
+tar --zstd -xf name.tar.zst     # tar.zst
+tar -xzf   name.tar.gz          # tar.gz
+tar -xjf   name.tar.bz2         # tar.bz2
 unzip      name.zip             # zip
 ```
 
-## アンインストール
-
-`Uninstall.ps1` を実行（右クリック項目と送るを削除）。最後に本フォルダを手動削除。
-
 ## 注意
 
-- Windows 側の tar は Unix のパーミッション / 所有者 / シンボリックリンクを完全には
-  保存しません。実行ビットや symlink を厳密に再現したい場合は Linux（または WSL）側で
-  tar 化してください。データファイルの受け渡しなら問題ありません。
-- 本体は OneDrive 配下にあります。OneDrive の「空き容量を増やす（オンラインのみ）」で
-  ファイルが実体を持たなくなると右クリックが失敗するため、フォルダを
-  「このデバイス上に常に保持する」に設定しておくと安全です。
+Windows の `tar` は Unix のパーミッション / 所有者 / シンボリックリンクを完全には保存しません。
+実行ビットや symlink を厳密に再現したい場合は Linux（または WSL）側で `tar` 化してください。
+データファイルの受け渡しなら問題ありません。
+
+## ライセンス
+
+[The Unlicense](LICENSE)（パブリックドメイン）。自由に使用・改変・再配布できます。無保証です。

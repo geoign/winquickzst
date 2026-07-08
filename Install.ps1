@@ -5,10 +5,12 @@
   再実行すれば追従します。
 #>
 $ErrorActionPreference = 'Stop'
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $script = Join-Path $PSScriptRoot 'WinQuickArchiver.ps1'
 if (-not (Test-Path -LiteralPath $script)) { throw "本体が見つかりません: $script" }
 
-$icon = '"C:\Program Files\7-Zip-Zstandard\7z.exe",0'
+$iconPath = Join-Path $env:SystemRoot 'System32\imageres.dll'   # Windows 標準アイコン(外部依存なし)
+$icon = '"' + $iconPath + '",-174'
 $cmd  = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Normal -File "' + $script + '" "%1"'
 
 # 1) フォルダ右クリック (Win11 新メニュー最上段狙い = whitelisted ID)
@@ -25,7 +27,7 @@ $ws  = New-Object -ComObject WScript.Shell
 $sc  = $ws.CreateShortcut($lnk)
 $sc.TargetPath   = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $sc.Arguments    = '-NoProfile -ExecutionPolicy Bypass -File "' + $script + '"'
-$sc.IconLocation = 'C:\Program Files\7-Zip-Zstandard\7z.exe,0'
+$sc.IconLocation = $iconPath + ',-174'
 $sc.Save()
 
 # 3) 旧バージョン(tar-zst 時代)の送るショートカットを掃除
@@ -35,4 +37,9 @@ if (Test-Path -LiteralPath $legacy) { Remove-Item -LiteralPath $legacy -Force }
 Write-Host 'WinQuickArchiver を登録しました。' -ForegroundColor Green
 Write-Host '  フォルダ右クリック → 「WinQuickArchiver で圧縮…」'
 Write-Host '  複数選択 → 右クリック → 送る → WinQuickArchiver'
-Write-Host 'エクスプローラーを再起動すると確実に反映されます。'
+Write-Host ''
+Write-Host 'メニューを反映するためエクスプローラーを再起動します...' -ForegroundColor DarkGray
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }
+Write-Host '完了しました。' -ForegroundColor Green
