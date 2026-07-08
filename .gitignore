@@ -1,0 +1,14 @@
+# テスト時に出力されがちなアーカイブ
+*.tar.zst
+*.tar.gz
+*.tar.bz2
+*.tar
+*.zip
+
+# 旧バージョンの保存先記憶ファイル
+lastdest.txt
+
+# OS/エディタ
+Thumbs.db
+Desktop.ini
+.vscode/
