@@ -1,87 +1,73 @@
 # WinQuickArchiver
 
-右クリック 1つで、フォルダを **好きな保存先へ直接** アーカイブ（`tar.zst` ほか）にする、
-Windows 用の軽量ツールです。追加ソフトのインストールは不要で、Windows に元から入っている
-`tar` だけで動きます。
+*Languages: **English** | [日本語](README.ja.md)*
 
-> **English summary**
-> A tiny Windows right-click tool that compresses a folder **straight into a
-> destination you choose** as `tar.zst` (default), `tar.gz`, `tar.bz2`, or `zip`.
-> It uses only Windows' built-in `bsdtar` — nothing else to install, no admin
-> rights, no network access. Public domain (Unlicense). The UI is currently in
-> Japanese. To install: download the folder, then double-click **`Install.cmd`**.
+A tiny Windows right-click tool that compresses a folder **straight into a
+destination you choose** — as `tar.zst` (default), `tar.gz`, `tar.bz2`, or `zip`.
+It uses only Windows' built-in `tar` (bsdtar), so there is nothing else to
+install, no admin rights, and no network access.
 
----
+## What it does
 
-## これは何？
+- Right-click a folder → **"Compress with WinQuickArchiver…"** → pick a format and level → pick a destination. Done: `folder.tar.zst` (etc.) is written **directly** where you chose.
+- No temp file and no move afterwards, so it stays **fast even for large folders**.
+- The `tar` family stores file names as **UTF-8**, so they are not garbled when extracted on Linux.
+- The UI language is chosen automatically — Japanese if your Windows display language **or** region is Japanese, otherwise English. You can force it with the environment variable `WQA_LANG=ja` or `WQA_LANG=en`.
 
-- フォルダを右クリック →「**WinQuickArchiver で圧縮…**」→ 形式と圧縮率を選ぶ → 保存先を選ぶ。
-  それだけで、選んだ場所に `フォルダ名.tar.zst`（等）が**直接**作られます。
-- 一時ファイルを作らず、後から移動する手間もないので、**大きいフォルダでも速い**です。
-- `tar` 系はファイル名を **UTF-8** で保存するので、**Linux で展開しても日本語が文字化けしません**。
+## Requirements
 
-## 動作要件
+- **Windows 11** (recommended). `tar.zst` needs the `libzstd`-enabled `tar` bundled with Windows 11.
+  - `tar.gz` / `tar.bz2` / `zip` also work on Windows 10.
+  - To check: run `tar --version` in PowerShell; if it lists `libzstd`, `tar.zst` is supported.
 
-- **Windows 11**（推奨）。`tar.zst` は Windows 11 同梱の `tar`（libzstd 内蔵）が必要です。
-  - `tar.gz` / `tar.bz2` / `zip` は Windows 10 でも動きます。
-  - 確認方法：PowerShell で `tar --version` を実行し、`libzstd` の表示があれば `tar.zst` 対応です。
+## Install (3 easy steps)
 
-## インストール（かんたん3ステップ）
+1. Click **Code → Download ZIP** and **extract** it (or place the folder anywhere, e.g. `Documents\winquickarchiver`).
+2. Double-click **`Install.cmd`** inside the folder.
+3. When you see "Done", it worked. You can close the window.
 
-1. この「Code」→「Download ZIP」でダウンロードし、**展開（解凍）**します。
-   （またはお好きな場所にフォルダを置きます。例：`ドキュメント\winquickarchiver`）
-2. フォルダ内の **`Install.cmd`** を**ダブルクリック**します。
-3. 青い画面が出て「完了しました」と表示されれば成功です。ウィンドウは閉じてOK。
+> Because the files come from the internet, Windows may show a SmartScreen or security warning the first time. Review it, then choose **More info → Run** (or **Open**) to proceed. The tool uses no admin rights and makes only the minimal changes listed below.
 
-> インターネットから入手したファイルなので、初回に「WindowsによってPCが保護されました」や
-> 「セキュリティの警告」が出ることがあります。内容を確認のうえ「詳細情報」→「実行」または
-> 「開く」で進めてください（本ツールは管理者権限を使わず、変更は下記のとおり最小限です）。
+## Usage
 
-## 使い方
+- **One folder:** right-click → **"Compress with WinQuickArchiver…"**
+  - If you don't see it on Windows 11, it is under **"Show more options"** (`Shift + F10`).
+- **Several at once:** select multiple folders/files → right-click → **Send to** → **WinQuickArchiver**
+- Pick a **format** and **level** in the dialog, then choose the **destination** (the picker opens at your Desktop).
 
-- **フォルダ1つ**：フォルダを右クリック →「**WinQuickArchiver で圧縮…**」
-  - Windows 11 でメニューに見当たらないときは「**その他のオプションを表示**」（`Shift + F10`）の中にあります。
-- **複数まとめて**：複数のフォルダ/ファイルを選択 → 右クリック → **送る** → 「**WinQuickArchiver**」
-- ダイアログで **形式** と **圧縮率** を選び、次に **保存先**（最初はデスクトップが開きます）を選ぶだけ。
+### Formats and levels
 
-### 選べる形式と圧縮率
-
-| 形式 | 用途の目安 |
+| Format | Good for |
 |---|---|
-| `tar.zst`（既定） | 速くて高圧縮。Linux とのやり取りにおすすめ |
-| `tar.gz` | 最も広く使える定番 |
-| `tar.bz2` | gz より少し高圧縮 |
-| `zip` | Windows/Mac で開きやすい |
+| `tar.zst` (default) | Fast and small. Recommended for exchanging files with Linux |
+| `tar.gz` | The most widely compatible classic |
+| `tar.bz2` | A bit smaller than gz |
+| `zip` | Easy to open on Windows / Mac |
 
-圧縮率は **軽め（既定・高速）/ 標準 / 最大** から選べます。
+Level: **Light (fast, default) / Normal / Maximum**.
 
-## このツールが PC にすること（安全性）
+## What it changes on your PC (safety)
 
-透明性のために明記します。**管理者権限は使いません。**
+For transparency — **no admin rights are used**:
 
-- 追加する登録は **現在のユーザーのみ（HKCU）** の以下だけです：
-  - 右クリックメニュー用のレジストリ項目 1つ
-  - 「送る」ショートカット 1つ
-- 圧縮は Windows 標準の `tar.exe` を呼ぶだけ。**ネットワーク通信・常駐・データ収集は一切ありません。**
-- すべて **`Uninstall.cmd` で元に戻せます**。
+- It adds, **for the current user only (HKCU)**:
+  - one registry entry for the right-click menu
+  - one "Send to" shortcut
+- Compression just calls Windows' built-in `tar.exe`. **No network, no background service, no data collection.**
+- Everything is reversible with **`Uninstall.cmd`**.
 
-## アンインストール
+## Uninstall
 
-1. **`Uninstall.cmd`** をダブルクリック（右クリック項目と「送る」を削除します）。
-2. 最後に、このフォルダごと削除すれば完了です。
+1. Double-click **`Uninstall.cmd`** (removes the right-click entry and the "Send to" shortcut).
+2. Delete this folder to remove the app itself.
 
-## 困ったとき
+## Troubleshooting
 
-- **メニューが出ない**：`Install.cmd` 実行後にエクスプローラーは自動再起動しますが、
-  反映されない場合はサインアウト→サインイン、または PC 再起動をお試しください。
-  Windows 11 では「その他のオプションを表示」の中も確認してください。
-- **クラウド同期フォルダに置く場合**（OneDrive/Dropbox 等）：ファイルが「オンラインのみ」に
-  なると右クリックが失敗することがあります。フォルダを「**このデバイス上に常に保持する**」に
-  設定するか、`C:` 直下など同期対象外の場所に置いてください。
-- **`tar.zst` が作れない**：お使いの Windows の `tar` が libzstd 非対応の可能性があります
-  （`tar --version` で確認）。その場合は `tar.gz` などをご利用ください。
+- **Menu doesn't appear:** `Install.cmd` restarts Explorer automatically; if it still doesn't show, sign out and back in, or restart the PC. On Windows 11 also check under "Show more options".
+- **Cloud-synced folders (OneDrive / Dropbox, etc.):** if the files become "online-only", the right-click may fail. Set the folder to **"Always keep on this device"**, or put it outside the synced area.
+- **Can't create `tar.zst`:** your `tar` may lack `libzstd` (check `tar --version`). Use `tar.gz` etc. instead.
 
-## Linux 側での展開
+## Extracting on Linux
 
 ```bash
 tar --zstd -xf name.tar.zst     # tar.zst
@@ -90,12 +76,12 @@ tar -xjf   name.tar.bz2         # tar.bz2
 unzip      name.zip             # zip
 ```
 
-## 注意
+## Note
 
-Windows の `tar` は Unix のパーミッション / 所有者 / シンボリックリンクを完全には保存しません。
-実行ビットや symlink を厳密に再現したい場合は Linux（または WSL）側で `tar` 化してください。
-データファイルの受け渡しなら問題ありません。
+Windows' `tar` does not fully preserve Unix permissions / ownership / symlinks.
+If you need exact reproduction of executable bits or symlinks, create the tar on
+Linux (or WSL). For plain data files it is fine.
 
-## ライセンス
+## License
 
-[The Unlicense](LICENSE)（パブリックドメイン）。自由に使用・改変・再配布できます。無保証です。
+[The Unlicense](LICENSE) (public domain). Use, modify, and redistribute freely. No warranty.

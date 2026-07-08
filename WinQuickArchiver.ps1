@@ -1,21 +1,22 @@
 ﻿<#
   WinQuickArchiver.ps1
   ------------------------------------------------------------------
-  右クリックしたフォルダ(または選択したファイル群)を、選んだ保存先へ
-  アーカイブとして「直接」書き出します(一時ファイル無し・移動無し)。
+  Right-click a folder (or select files) and write an archive directly
+  into a destination you choose (no temp file, no move afterwards).
+  UI language follows the Windows display language (Japanese or English).
 
-    形式  : tar.zst(既定) / tar.gz / tar.bz2 / zip   ← フォームで選択
-    圧縮率: 軽め(既定) / 標準 / 最大                 ← フォームで選択
-    エンジン: Windows 標準の bsdtar (libzstd/liblzma/zlib/bz2lib) … 追加ソフト不要
-    ファイル名は tar 系では UTF-8(pax) 格納 … Linux の tar でも文字化けしない
+    Formats : tar.zst (default) / tar.gz / tar.bz2 / zip     (chosen in a dialog)
+    Levels  : light (default) / normal / max                 (chosen in a dialog)
+    Engine  : Windows' built-in bsdtar (libzstd/liblzma/zlib/bz2lib) - nothing extra to install
+    tar-family stores names as UTF-8 (pax) - no mojibake when extracted on Linux
   ------------------------------------------------------------------
-  呼び出し例(自動化/テスト用にフォームを飛ばす):
+  Automation / test (skips the dialog):
     WinQuickArchiver.ps1 -Format tar.zst -Level light -Dest "D:\out" "C:\path\folder"
 #>
 param(
-  [string]$Dest   = '',    # 省略時はフォルダ選択ダイアログ(既定=デスクトップ)
-  [string]$Format = '',    # tar.zst | tar.gz | tar.bz2 | zip  (空ならフォーム)
-  [string]$Level  = '',    # light | std | max                 (空ならフォーム)
+  [string]$Dest   = '',    # empty -> folder picker (defaults to Desktop)
+  [string]$Format = '',    # tar.zst | tar.gz | tar.bz2 | zip  (empty -> dialog)
+  [string]$Level  = '',    # light | std | max                 (empty -> dialog)
   [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
   [string[]]$Paths
 )
@@ -25,26 +26,41 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { & chcp 65001 > $null } catch {}
 $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
 
-# ---- 形式テーブル (レベルは形式ごとに妥当な値へマッピング) ----
+# ---- 言語自動判定 / auto language.  Force with env var WQA_LANG=ja|en.
+#      Default: Japanese if the display language OR the region is Japanese; otherwise English.
+function Get-IsJa {
+  if ($env:WQA_LANG) { return ($env:WQA_LANG.Trim().ToLower().StartsWith('ja')) }
+  $ui = [System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName
+  $cu = [System.Globalization.CultureInfo]::CurrentCulture.TwoLetterISOLanguageName
+  return ($ui -eq 'ja' -or $cu -eq 'ja')
+}
+$script:isJa = Get-IsJa
+function T([string]$ja, [string]$en){ if ($script:isJa) { $ja } else { $en } }
+
 $FORMATS = [ordered]@{
   'tar.zst' = @{ ext = '.tar.zst'; sw = '--zstd';       mod = 'zstd';  extra = ',threads=0'; lv = @{ light = 2; std = 10; max = 19 } }
   'tar.gz'  = @{ ext = '.tar.gz';  sw = '--gzip';       mod = 'gzip';  extra = '';           lv = @{ light = 2; std = 6;  max = 9  } }
   'tar.bz2' = @{ ext = '.tar.bz2'; sw = '--bzip2';      mod = 'bzip2'; extra = '';           lv = @{ light = 2; std = 6;  max = 9  } }
   'zip'     = @{ ext = '.zip';     sw = '--format=zip'; mod = 'zip';   extra = '';           lv = @{ light = 2; std = 6;  max = 9  } }
 }
-$LEVELS = [ordered]@{ 'light' = '軽め (高速)'; 'std' = '標準'; 'max' = '最大圧縮' }
+$LEVELKEYS = @('light', 'std', 'max')
+$LEVELDISP = @{
+  light = (T '軽め (高速)' 'Light (fast)')
+  std   = (T '標準'         'Normal')
+  max   = (T '最大圧縮'     'Maximum')
+}
 
-function Fail($msg){ Write-Host $msg -ForegroundColor Red; Read-Host 'Enter を押すと閉じます'; exit 1 }
+function Fail([string]$msg){ Write-Host $msg -ForegroundColor Red; Read-Host (T 'Enter を押すと閉じます' 'Press Enter to close'); exit 1 }
 
-if (-not $Paths -or $Paths.Count -eq 0) { Fail '入力がありません。' }
+if (-not $Paths -or $Paths.Count -eq 0) { Fail (T '入力がありません。' 'No input.') }
 $items = @()
 foreach($p in $Paths){ if(Test-Path -LiteralPath $p){ $items += (Resolve-Path -LiteralPath $p).Path } }
-if ($items.Count -eq 0) { Fail '有効な項目がありません。' }
+if ($items.Count -eq 0) { Fail (T '有効な項目がありません。' 'No valid items.') }
 
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
 Add-Type -AssemblyName System.Drawing | Out-Null
 
-# ---- 形式・圧縮率の選択フォーム ----
+# ---- 形式・圧縮率の選択フォーム / format & level dialog ----
 if (-not $Format -or -not $Level) {
   $frm = New-Object System.Windows.Forms.Form
   $frm.Text = 'WinQuickArchiver'
@@ -54,12 +70,12 @@ if (-not $Format -or -not $Level) {
   $frm.MaximizeBox = $false; $frm.MinimizeBox = $false; $frm.TopMost = $true
 
   $lblInfo = New-Object System.Windows.Forms.Label
-  $lblInfo.Text = ("対象: {0} 項目" -f $items.Count)
+  $lblInfo.Text = (T ("対象: {0} 項目" -f $items.Count) ("Items: {0}" -f $items.Count))
   $lblInfo.Location = New-Object System.Drawing.Point(16, 14); $lblInfo.AutoSize = $true
   $frm.Controls.Add($lblInfo)
 
   $lbl1 = New-Object System.Windows.Forms.Label
-  $lbl1.Text = '形式:'; $lbl1.Location = New-Object System.Drawing.Point(16, 48); $lbl1.AutoSize = $true
+  $lbl1.Text = (T '形式:' 'Format:'); $lbl1.Location = New-Object System.Drawing.Point(16, 48); $lbl1.AutoSize = $true
   $frm.Controls.Add($lbl1)
   $cbFmt = New-Object System.Windows.Forms.ComboBox
   $cbFmt.DropDownStyle = 'DropDownList'
@@ -69,13 +85,13 @@ if (-not $Format -or -not $Level) {
   $frm.Controls.Add($cbFmt)
 
   $lbl2 = New-Object System.Windows.Forms.Label
-  $lbl2.Text = '圧縮率:'; $lbl2.Location = New-Object System.Drawing.Point(16, 85); $lbl2.AutoSize = $true
+  $lbl2.Text = (T '圧縮率:' 'Level:'); $lbl2.Location = New-Object System.Drawing.Point(16, 85); $lbl2.AutoSize = $true
   $frm.Controls.Add($lbl2)
   $cbLv = New-Object System.Windows.Forms.ComboBox
   $cbLv.DropDownStyle = 'DropDownList'
   $cbLv.Location = New-Object System.Drawing.Point(95, 82); $cbLv.Width = 210
-  [void]$cbLv.Items.AddRange(@($LEVELS.Values))
-  $cbLv.SelectedItem = $LEVELS['light']
+  foreach($k in $LEVELKEYS){ [void]$cbLv.Items.Add($LEVELDISP[$k]) }
+  $cbLv.SelectedIndex = 0
   $frm.Controls.Add($cbLv)
 
   $btnOk = New-Object System.Windows.Forms.Button
@@ -83,36 +99,36 @@ if (-not $Format -or -not $Level) {
   $btnOk.DialogResult = [System.Windows.Forms.DialogResult]::OK
   $frm.Controls.Add($btnOk); $frm.AcceptButton = $btnOk
   $btnCancel = New-Object System.Windows.Forms.Button
-  $btnCancel.Text = 'キャンセル'; $btnCancel.Location = New-Object System.Drawing.Point(220, 132)
+  $btnCancel.Text = (T 'キャンセル' 'Cancel'); $btnCancel.Location = New-Object System.Drawing.Point(220, 132)
   $btnCancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
   $frm.Controls.Add($btnCancel); $frm.CancelButton = $btnCancel
 
-  $res = $frm.ShowDialog()
-  if ($res -ne [System.Windows.Forms.DialogResult]::OK) { exit 0 }
+  if ($frm.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 0 }
   $Format = [string]$cbFmt.SelectedItem
-  $Level  = ($LEVELS.GetEnumerator() | Where-Object { $_.Value -eq $cbLv.SelectedItem }).Key
+  $Level  = $LEVELKEYS[$cbLv.SelectedIndex]
   $frm.Dispose()
 }
-if (-not $FORMATS.Contains($Format)) { Fail "不明な形式: $Format" }
+if (-not $FORMATS.Contains($Format)) { Fail (T "不明な形式: $Format" "Unknown format: $Format") }
 if (-not $FORMATS[$Format].lv.ContainsKey($Level)) { $Level = 'light' }
 
-# ---- 保存先(既定=デスクトップ) ----
+# ---- 保存先(既定=デスクトップ) / destination (defaults to Desktop) ----
 if (-not $Dest) {
   $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-  $dlg.Description = 'アーカイブの保存先フォルダを選択'
+  $dlg.Description = (T 'アーカイブの保存先フォルダを選択' 'Choose the destination folder for the archive')
   $dlg.ShowNewFolderButton = $true
   $dlg.RootFolder   = [System.Environment+SpecialFolder]::Desktop
   $dlg.SelectedPath = [Environment]::GetFolderPath('Desktop')
   if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 0 }
   $Dest = $dlg.SelectedPath
 }
-if (-not (Test-Path -LiteralPath $Dest)) { Fail "保存先がありません: $Dest" }
+if (-not (Test-Path -LiteralPath $Dest)) { Fail (T "保存先がありません: $Dest" "Destination not found: $Dest") }
 
-# ---- 圧縮実行(保存先へ直接書き込み) ----
+# ---- 圧縮実行(保存先へ直接書き込み) / compress straight into destination ----
 $fmt  = $FORMATS[$Format]
 $L    = $fmt.lv[$Level]
 $opts = "$($fmt.mod):compression-level=$L$($fmt.extra)"
-Write-Host ("形式: {0}   圧縮率: {1}(lv{2})   保存先: {3}" -f $Format, $Level, $L, $Dest) -ForegroundColor DarkGray
+Write-Host (T ("形式: {0}   圧縮率: {1}(lv{2})   保存先: {3}" -f $Format, $Level, $L, $Dest) `
+              ("Format: {0}   Level: {1}(lv{2})   Dest: {3}" -f $Format, $Level, $L, $Dest)) -ForegroundColor DarkGray
 
 $okCount = 0; $failCount = 0
 foreach($it in $items){
@@ -121,20 +137,21 @@ foreach($it in $items){
   $out    = Join-Path $Dest ($leaf + $fmt.ext)
   Write-Host ''
   Write-Host "▶ $leaf  →  $out" -ForegroundColor Cyan
-  Write-Host "  圧縮中... (完了までウィンドウは開いたままになります)" -ForegroundColor DarkGray
+  Write-Host ("  " + (T '圧縮中... (完了までウィンドウは開いたままになります)' 'Compressing... (this window stays open until done)')) -ForegroundColor DarkGray
   Push-Location -LiteralPath $parent
   try {
-    & $tar $fmt.sw "--options=$opts" -c -f "$out" -- "$leaf"   # ファイル名は非表示(高速)
+    & $tar $fmt.sw "--options=$opts" -c -f "$out" -- "$leaf"   # names hidden (faster)
     $rc = $LASTEXITCODE
   } finally { Pop-Location }
   if ($rc -eq 0 -and (Test-Path -LiteralPath $out)) {
     $sz = (Get-Item -LiteralPath $out).Length
-    Write-Host ("  ✓ 完了  {0:N1} MB" -f ($sz/1MB)) -ForegroundColor Green
+    Write-Host ("  " + (T '✓ 完了' '✓ Done') + ("  {0:N1} MB" -f ($sz/1MB))) -ForegroundColor Green
     $okCount++
   } else {
-    Write-Host "  ✗ 失敗 (code $rc)" -ForegroundColor Red; $failCount++
+    Write-Host ("  " + (T "✗ 失敗 (code $rc)" "✗ Failed (code $rc)")) -ForegroundColor Red; $failCount++
   }
 }
 Write-Host ''
-Write-Host ("=== 完了: 成功 $okCount / 失敗 $failCount  (保存先: $Dest) ===") -ForegroundColor Yellow
-if ($failCount -gt 0) { Read-Host 'Enter を押すと閉じます' } else { Start-Sleep -Seconds 2 }
+Write-Host (T ("=== 完了: 成功 $okCount / 失敗 $failCount  (保存先: $Dest) ===") `
+              ("=== Finished: OK $okCount / Failed $failCount  (dest: $Dest) ===")) -ForegroundColor Yellow
+if ($failCount -gt 0) { Read-Host (T 'Enter を押すと閉じます' 'Press Enter to close') } else { Start-Sleep -Seconds 2 }
