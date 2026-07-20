@@ -1,11 +1,18 @@
 # Third-party notices
 
-`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `00118d00e12bd50ce6533d6fac785d92a1288307`.
+`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `fb67fd3528d8c45eb4da2e729078331134ff1b7d`.
 
-- Binary SHA-256: `40A10036EA1CC0DD6F7C9EB3B6D7FCDB84345958E8388B7AFE0BC24C8988A30F`
-- Version: `0.2.0`
+- Binary SHA-256: `B65402285440438D3289DE94FEAD923932BFEAD6CA10323752171640B243F043`
+- Version: `0.3.0`
 - Target: `x86_64-pc-windows-msvc`
 - `fast-tarzst` license: MIT
+
+The build vendors `tar` crate 0.4.46 under its original MIT OR Apache-2.0
+license. A local performance patch makes archive entries of 1 MiB or larger
+use a reusable 8 MiB per-thread copy buffer; smaller entries retain the
+upstream copy path. Tar headers, traversal behavior, metadata handling, and the
+archive format are unchanged. The vendored source and patch description are
+included in the `fast-tarzst` source repository.
 
 The binary build uses the following Rust crates under the license expressions published in their Cargo packages:
 

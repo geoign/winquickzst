@@ -8,6 +8,8 @@ A Windows right-click tool that creates a fast `tar.zst` archive directly in a d
 
 - Right-click a folder → **Compress to tar.zst with WinQuickZst…** → choose a compression level → choose a destination.
 - Every level makes the available logical CPUs available to Zstandard workers.
+- Files of 1 MiB or larger use a reusable 8 MiB input buffer to keep the
+  Zstandard workers fed efficiently; smaller files retain a lightweight path.
 - Output names use `folder_YYYYMMDD-HHMMSS.tar.zst`.
 - The selected folder itself is stored at the archive root.
 - A Zstandard frame checksum is generated on the fly.
