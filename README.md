@@ -10,6 +10,8 @@ A Windows right-click tool that creates a fast `tar.zst` archive directly in a d
 - Every level makes the available logical CPUs available to Zstandard workers.
 - Files of 1 MiB or larger use a reusable 8 MiB input buffer to keep the
   Zstandard workers fed efficiently; smaller files retain a lightweight path.
+- During compression, the console updates processed size, output size,
+  effective speed, and elapsed time once per second.
 - Output names use `folder_YYYYMMDD-HHMMSS.tar.zst`.
 - The selected folder itself is stored at the archive root.
 - A Zstandard frame checksum is generated on the fly.
@@ -75,6 +77,8 @@ tar --zstd -xf folder_YYYYMMDD-HHMMSS.tar.zst
 
 ## Notes
 
+- Progress reporting deliberately avoids a preliminary source scan. It shows
+  actual activity rather than a percentage or estimated remaining time.
 - If the source changes during compression, archive-wide consistency is not guaranteed.
 - A power loss or forced termination can leave a partial `.tar.zst` file.
 - NTFS ACLs, alternate data streams, Unix ownership, and executable bits are not preserved completely.

@@ -1,9 +1,9 @@
 # Third-party notices
 
-`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `fb67fd3528d8c45eb4da2e729078331134ff1b7d`.
+`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `e016f4d47b10a2c4211f6f53db40b8654e3b87d6`.
 
-- Binary SHA-256: `B65402285440438D3289DE94FEAD923932BFEAD6CA10323752171640B243F043`
-- Version: `0.3.0`
+- Binary SHA-256: `2729E77A4DA60FA3FBB2939D6F254C07891FCE87ED6A27745C889E0DA74F3631`
+- Version: `0.4.0`
 - Target: `x86_64-pc-windows-msvc`
 - `fast-tarzst` license: MIT
 

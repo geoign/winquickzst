@@ -43,6 +43,26 @@ $LEVELKEYS = @($LEVELS.Keys)
 
 function Fail([string]$msg){ Write-Host $msg -ForegroundColor Red; Read-Host (T 'Enter を押すと閉じます' 'Press Enter to close'); exit 1 }
 
+function Format-ByteSize([double]$bytes) {
+  $units = @('B', 'KiB', 'MiB', 'GiB', 'TiB')
+  $value = [double]$bytes
+  if ($value -lt 0) { $value = 0 }
+  $unit = 0
+  while ($value -ge 1024 -and $unit -lt ($units.Count - 1)) {
+    $value /= 1024
+    $unit++
+  }
+  if ($unit -eq 0) { return ('{0:N0} {1}' -f $value, $units[$unit]) }
+  return ('{0:N1} {1}' -f $value, $units[$unit])
+}
+
+function Format-Elapsed([long]$milliseconds) {
+  if ($milliseconds -lt 0) { $milliseconds = 0 }
+  $elapsed = [TimeSpan]::FromMilliseconds($milliseconds)
+  if ($elapsed.TotalHours -ge 1) { return $elapsed.ToString('hh\:mm\:ss') }
+  return $elapsed.ToString('mm\:ss')
+}
+
 if (-not $Paths -or $Paths.Count -eq 0) { Fail (T '入力がありません。' 'No input.') }
 if (-not (Test-Path -LiteralPath $fastTarZst -PathType Leaf)) {
   Fail (T "圧縮エンジンが見つかりません: $fastTarZst" "Compression engine not found: $fastTarZst")
@@ -126,12 +146,35 @@ foreach($item in $items){
 
   $previousErrorAction = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
+  $engineOutput = New-Object 'System.Collections.Generic.List[string]'
+  $progressWidth = 0
   try {
-    $engineOutput = @(& $fastTarZst --level $zstdLevel $item $Dest 2>&1)
+    & $fastTarZst --progress --level $zstdLevel $item $Dest 2>&1 | ForEach-Object {
+      $line = [string]$_
+      if ($line -match '^FAST_TARZST_PROGRESS ([0-9]+) ([0-9]+) ([0-9]+)$') {
+        $processedBytes = [double]$Matches[1]
+        $outputBytes = [double]$Matches[2]
+        $elapsedMs = [long]$Matches[3]
+        $bytesPerSecond = if ($elapsedMs -gt 0) { $processedBytes * 1000 / $elapsedMs } else { 0 }
+        $progressText = T `
+          ('  処理済み {0}  出力 {1}  速度 {2}/s  経過 {3}' -f `
+            (Format-ByteSize $processedBytes), (Format-ByteSize $outputBytes),
+            (Format-ByteSize $bytesPerSecond), (Format-Elapsed $elapsedMs)) `
+          ('  Processed {0}  Output {1}  Speed {2}/s  Elapsed {3}' -f `
+            (Format-ByteSize $processedBytes), (Format-ByteSize $outputBytes),
+            (Format-ByteSize $bytesPerSecond), (Format-Elapsed $elapsedMs))
+        $displayWidth = [math]::Max($progressWidth, $progressText.Length)
+        Write-Host ("`r" + $progressText.PadRight($displayWidth)) -NoNewline -ForegroundColor DarkGray
+        $progressWidth = $progressText.Length
+      } else {
+        [void]$engineOutput.Add($line)
+      }
+    }
     $rc = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
   }
+  if ($progressWidth -gt 0) { Write-Host '' }
 
   $out = $null
   if ($rc -eq 0) {
