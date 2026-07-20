@@ -1,87 +1,82 @@
-# WinQuickArchiver
+# WinQuickZst
 
 *Languages: **English** | [日本語](README.ja.md)*
 
-A tiny Windows right-click tool that compresses a folder **straight into a
-destination you choose** — as `tar.zst` (default), `tar.gz`, `tar.bz2`, or `zip`.
-The default `tar.zst` / Light mode uses the bundled fast Rust engine; other
-formats use Windows' built-in `tar`. No admin rights or network access is needed.
+A Windows right-click tool that creates a fast `tar.zst` archive directly in a destination you choose. Its bundled Rust engine generates tar and compresses with Zstandard on the fly, with no intermediate tar file and no move afterwards.
 
-## What it does
+## Features
 
-- Right-click a folder → **"Compress with WinQuickArchiver…"** → pick a format and level → pick a destination. Done: `folder_YYYYMMDD-HHMMSS.tar.zst` (default mode) is written **directly** where you chose.
-- No temp file and no move afterwards, so it stays **fast even for large folders**.
-- The default `tar.zst` / Light mode is fixed at level 2 and uses every available logical CPU.
-- The `tar` family stores file names as **UTF-8**, so they are not garbled when extracted on Linux.
-- The UI language is chosen automatically — Japanese if your Windows display language **or** region is Japanese, otherwise English. You can force it with the environment variable `WQA_LANG=ja` or `WQA_LANG=en`.
+- Right-click a folder → **Compress to tar.zst with WinQuickZst…** → choose a compression level → choose a destination.
+- Every level makes the available logical CPUs available to Zstandard workers.
+- Output names use `folder_YYYYMMDD-HHMMSS.tar.zst`.
+- The selected folder itself is stored at the archive root.
+- A Zstandard frame checksum is generated on the fly.
+- The UI follows the Windows display language and region. Override it with `WQZ_LANG=ja` or `WQZ_LANG=en`.
+
+## Compression levels
+
+| UI choice | Zstandard level | Intended use |
+|---|---:|---|
+| Fast (default) | 2 | Minimize transfer preparation time |
+| Normal | 10 | Balance size and time |
+| High | 19 | Prefer size over processing time |
 
 ## Requirements
 
-- **64-bit Windows 10 or 11**. The default fast `tar.zst` mode runs entirely from the bundled executable.
-- `tar.gz`, `tar.bz2`, `zip`, and Normal/Maximum compression use Windows' built-in `tar.exe`.
+- 64-bit Windows 10 or 11
+- Folder input only
+- No administrator rights, additional runtime, or network access required
 
-## Install (3 easy steps)
+## Install
 
-1. Click **Code → Download ZIP** and **extract** it (or place the folder anywhere, e.g. `Documents\winquickarchiver`).
-2. Double-click **`Install.cmd`** inside the folder.
-3. When you see "Done", it worked. You can close the window.
-
-> Because the files come from the internet, Windows may show a SmartScreen or security warning the first time. Review it, then choose **More info → Run** (or **Open**) to proceed. The tool uses no admin rights and makes only the minimal changes listed below.
+1. Put this folder anywhere. If it is in a cloud-synced folder, mark it as always available on this device.
+2. Double-click **`Install.cmd`**.
+3. After Explorer restarts, the folder context menu contains **Compress to tar.zst with WinQuickZst…**.
 
 ## Usage
 
-- **One folder:** right-click → **"Compress with WinQuickArchiver…"**
-  - If you don't see it on Windows 11, it is under **"Show more options"** (`Shift + F10`).
-- **Several at once:** select multiple folders/files → right-click → **Send to** → **WinQuickArchiver**
-- Pick a **format** and **level** in the dialog, then choose the **destination** (the picker opens at your Desktop).
+- **One folder:** right-click it → **Compress to tar.zst with WinQuickZst…**
+  - On Windows 11, check **Show more options** (`Shift + F10`) if necessary.
+- **Multiple folders:** select them → right-click → **Send to** → **WinQuickZst**
+- Choose a compression level, then choose the destination folder.
 
-### Formats and levels
+Automation is also supported:
 
-| Format | Good for |
-|---|---|
-| `tar.zst` (default) | Fast and small. Recommended for exchanging files with Linux |
-| `tar.gz` | The most widely compatible classic |
-| `tar.bz2` | A bit smaller than gz |
-| `zip` | Easy to open on Windows / Mac |
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\WinQuickZst.ps1 -Level std -Dest "D:\out" "C:\data"
+```
 
-Level: **Light (fast, level 2, all CPUs) / Normal / Maximum**. The fast Rust engine is used for folders in `tar.zst` / Light mode.
+`-Level` accepts `light` (Lv.2), `std` (Lv.10), or `max` (Lv.19).
 
-## What it changes on your PC (safety)
+## Changes made to your PC
 
-For transparency — **no admin rights are used**:
+Only the following current-user (HKCU) entries are added; no administrator rights are used:
 
-- It adds, **for the current user only (HKCU)**:
-  - one registry entry for the right-click menu
-  - one "Send to" shortcut
-- Compression calls the bundled `bin\fast-tarzst.exe` or Windows' built-in `tar.exe`. **No network, no background service, no data collection.**
-- Everything is reversible with **`Uninstall.cmd`**.
+- One folder context-menu entry
+- One Send-to shortcut
 
-## Uninstall
-
-1. Double-click **`Uninstall.cmd`** (removes the right-click entry and the "Send to" shortcut).
-2. Delete this folder to remove the app itself.
-
-## Troubleshooting
-
-- **Menu doesn't appear:** `Install.cmd` restarts Explorer automatically; if it still doesn't show, sign out and back in, or restart the PC. On Windows 11 also check under "Show more options".
-- **Cloud-synced folders (OneDrive / Dropbox, etc.):** if the files become "online-only", the right-click may fail. Set the folder to **"Always keep on this device"**, or put it outside the synced area.
-- **Can't create fast `tar.zst`:** check that `bin\fast-tarzst.exe` exists, extract the ZIP again, and rerun `Install.cmd`.
-- **Other formats fail:** run `tar --version` in PowerShell and confirm that Windows' built-in tar is available.
+Compression uses only the bundled `bin\fast-tarzst.exe`. There is no background service, data collection, or network access.
 
 ## Extracting on Linux
 
+The Linux side needs the `zstd` command:
+
 ```bash
-tar --zstd -xf name.tar.zst     # tar.zst
-tar -xzf   name.tar.gz          # tar.gz
-tar -xjf   name.tar.bz2         # tar.bz2
-unzip      name.zip             # zip
+sudo apt-get install zstd
+tar --zstd -xf folder_YYYYMMDD-HHMMSS.tar.zst
 ```
 
-## Note
+## Uninstall
 
-This tool does not fully preserve Unix permissions / ownership / symlinks.
-If you need exact reproduction of executable bits or symlinks, create the tar on
-Linux (or WSL). For plain data files it is fine.
+1. Double-click **`Uninstall.cmd`**.
+2. Delete this folder manually.
+
+## Notes
+
+- If the source changes during compression, archive-wide consistency is not guaranteed.
+- A power loss or forced termination can leave a partial `.tar.zst` file.
+- NTFS ACLs, alternate data streams, Unix ownership, and executable bits are not preserved completely.
+- High compression Lv.19 can use substantial CPU, memory, and time.
 
 ## License
 
