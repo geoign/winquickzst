@@ -4,21 +4,21 @@
 
 A tiny Windows right-click tool that compresses a folder **straight into a
 destination you choose** — as `tar.zst` (default), `tar.gz`, `tar.bz2`, or `zip`.
-It uses only Windows' built-in `tar` (bsdtar), so there is nothing else to
-install, no admin rights, and no network access.
+The default `tar.zst` / Light mode uses the bundled fast Rust engine; other
+formats use Windows' built-in `tar`. No admin rights or network access is needed.
 
 ## What it does
 
-- Right-click a folder → **"Compress with WinQuickArchiver…"** → pick a format and level → pick a destination. Done: `folder.tar.zst` (etc.) is written **directly** where you chose.
+- Right-click a folder → **"Compress with WinQuickArchiver…"** → pick a format and level → pick a destination. Done: `folder_YYYYMMDD-HHMMSS.tar.zst` (default mode) is written **directly** where you chose.
 - No temp file and no move afterwards, so it stays **fast even for large folders**.
+- The default `tar.zst` / Light mode is fixed at level 2 and uses every available logical CPU.
 - The `tar` family stores file names as **UTF-8**, so they are not garbled when extracted on Linux.
 - The UI language is chosen automatically — Japanese if your Windows display language **or** region is Japanese, otherwise English. You can force it with the environment variable `WQA_LANG=ja` or `WQA_LANG=en`.
 
 ## Requirements
 
-- **Windows 11** (recommended). `tar.zst` needs the `libzstd`-enabled `tar` bundled with Windows 11.
-  - `tar.gz` / `tar.bz2` / `zip` also work on Windows 10.
-  - To check: run `tar --version` in PowerShell; if it lists `libzstd`, `tar.zst` is supported.
+- **64-bit Windows 10 or 11**. The default fast `tar.zst` mode runs entirely from the bundled executable.
+- `tar.gz`, `tar.bz2`, `zip`, and Normal/Maximum compression use Windows' built-in `tar.exe`.
 
 ## Install (3 easy steps)
 
@@ -44,7 +44,7 @@ install, no admin rights, and no network access.
 | `tar.bz2` | A bit smaller than gz |
 | `zip` | Easy to open on Windows / Mac |
 
-Level: **Light (fast, default) / Normal / Maximum**.
+Level: **Light (fast, level 2, all CPUs) / Normal / Maximum**. The fast Rust engine is used for folders in `tar.zst` / Light mode.
 
 ## What it changes on your PC (safety)
 
@@ -53,7 +53,7 @@ For transparency — **no admin rights are used**:
 - It adds, **for the current user only (HKCU)**:
   - one registry entry for the right-click menu
   - one "Send to" shortcut
-- Compression just calls Windows' built-in `tar.exe`. **No network, no background service, no data collection.**
+- Compression calls the bundled `bin\fast-tarzst.exe` or Windows' built-in `tar.exe`. **No network, no background service, no data collection.**
 - Everything is reversible with **`Uninstall.cmd`**.
 
 ## Uninstall
@@ -65,7 +65,8 @@ For transparency — **no admin rights are used**:
 
 - **Menu doesn't appear:** `Install.cmd` restarts Explorer automatically; if it still doesn't show, sign out and back in, or restart the PC. On Windows 11 also check under "Show more options".
 - **Cloud-synced folders (OneDrive / Dropbox, etc.):** if the files become "online-only", the right-click may fail. Set the folder to **"Always keep on this device"**, or put it outside the synced area.
-- **Can't create `tar.zst`:** your `tar` may lack `libzstd` (check `tar --version`). Use `tar.gz` etc. instead.
+- **Can't create fast `tar.zst`:** check that `bin\fast-tarzst.exe` exists, extract the ZIP again, and rerun `Install.cmd`.
+- **Other formats fail:** run `tar --version` in PowerShell and confirm that Windows' built-in tar is available.
 
 ## Extracting on Linux
 
@@ -78,10 +79,10 @@ unzip      name.zip             # zip
 
 ## Note
 
-Windows' `tar` does not fully preserve Unix permissions / ownership / symlinks.
+This tool does not fully preserve Unix permissions / ownership / symlinks.
 If you need exact reproduction of executable bits or symlinks, create the tar on
 Linux (or WSL). For plain data files it is fine.
 
 ## License
 
-[The Unlicense](LICENSE) (public domain). Use, modify, and redistribute freely. No warranty.
+The PowerShell wrapper is released under [The Unlicense](LICENSE) (public domain). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the bundled engine and dependencies. No warranty.

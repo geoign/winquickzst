@@ -12,3 +12,7 @@ lastdest.txt
 Thumbs.db
 Desktop.ini
 .vscode/
+
+# 同梱するリリースEXE以外のネイティブビルド出力
+bin/*
+!bin/fast-tarzst.exe

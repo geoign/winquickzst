@@ -18,6 +18,8 @@ function T([string]$ja, [string]$en){ if ($isJa) { $ja } else { $en } }
 
 $script = Join-Path $PSScriptRoot 'WinQuickArchiver.ps1'
 if (-not (Test-Path -LiteralPath $script)) { throw (T "本体が見つかりません: $script" "Main script not found: $script") }
+$fastTarZst = Join-Path $PSScriptRoot 'bin\fast-tarzst.exe'
+if (-not (Test-Path -LiteralPath $fastTarZst -PathType Leaf)) { throw (T "高速圧縮エンジンが見つかりません: $fastTarZst" "Fast compression engine not found: $fastTarZst") }
 
 $iconPath = Join-Path $env:SystemRoot 'System32\imageres.dll'   # Windows built-in icon (no external dependency)
 $icon  = '"' + $iconPath + '",-174'

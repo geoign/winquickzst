@@ -7,7 +7,7 @@
 
     Formats : tar.zst (default) / tar.gz / tar.bz2 / zip     (chosen in a dialog)
     Levels  : light (default) / normal / max                 (chosen in a dialog)
-    Engine  : Windows' built-in bsdtar (libzstd/liblzma/zlib/bz2lib) - nothing extra to install
+    Engine  : bundled fast-tarzst for tar.zst/light folders; Windows bsdtar otherwise
     tar-family stores names as UTF-8 (pax) - no mojibake when extracted on Linux
   ------------------------------------------------------------------
   Automation / test (skips the dialog):
@@ -25,6 +25,7 @@ $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { & chcp 65001 > $null } catch {}
 $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+$fastTarZst = Join-Path $PSScriptRoot 'bin\fast-tarzst.exe'
 
 # ---- 言語自動判定 / auto language.  Force with env var WQA_LANG=ja|en.
 #      Default: Japanese if the display language OR the region is Japanese; otherwise English.
@@ -45,7 +46,7 @@ $FORMATS = [ordered]@{
 }
 $LEVELKEYS = @('light', 'std', 'max')
 $LEVELDISP = @{
-  light = (T '軽め (高速)' 'Light (fast)')
+  light = (T '軽め (高速・全CPU)' 'Light (fast, all CPUs)')
   std   = (T '標準'         'Normal')
   max   = (T '最大圧縮'     'Maximum')
 }
@@ -111,6 +112,11 @@ if (-not $Format -or -not $Level) {
 if (-not $FORMATS.Contains($Format)) { Fail (T "不明な形式: $Format" "Unknown format: $Format") }
 if (-not $FORMATS[$Format].lv.ContainsKey($Level)) { $Level = 'light' }
 
+$needsFastTarZst = $Format -eq 'tar.zst' -and $Level -eq 'light' -and @($items | Where-Object { Test-Path -LiteralPath $_ -PathType Container }).Count -gt 0
+if ($needsFastTarZst -and -not (Test-Path -LiteralPath $fastTarZst -PathType Leaf)) {
+  Fail (T "高速圧縮エンジンが見つかりません: $fastTarZst" "Fast compression engine not found: $fastTarZst")
+}
+
 # ---- 保存先(既定=デスクトップ) / destination (defaults to Desktop) ----
 if (-not $Dest) {
   $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -134,20 +140,46 @@ $okCount = 0; $failCount = 0
 foreach($it in $items){
   $parent = [System.IO.Path]::GetDirectoryName($it)
   $leaf   = [System.IO.Path]::GetFileName($it)
-  $out    = Join-Path $Dest ($leaf + $fmt.ext)
+  $useFastTarZst = $Format -eq 'tar.zst' -and $Level -eq 'light' -and (Test-Path -LiteralPath $it -PathType Container)
+  $out = $null
+  $targetDisplay = if ($useFastTarZst) { Join-Path $Dest ($leaf + '_YYYYMMDD-HHMMSS.tar.zst') } else { Join-Path $Dest ($leaf + $fmt.ext) }
   Write-Host ''
-  Write-Host "▶ $leaf  →  $out" -ForegroundColor Cyan
+  Write-Host "▶ $leaf  →  $targetDisplay" -ForegroundColor Cyan
   Write-Host ("  " + (T '圧縮中... (完了までウィンドウは開いたままになります)' 'Compressing... (this window stays open until done)')) -ForegroundColor DarkGray
-  Push-Location -LiteralPath $parent
-  try {
-    & $tar $fmt.sw "--options=$opts" -c -f "$out" -- "$leaf"   # names hidden (faster)
-    $rc = $LASTEXITCODE
-  } finally { Pop-Location }
-  if ($rc -eq 0 -and (Test-Path -LiteralPath $out)) {
+
+  if ($useFastTarZst) {
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+      $engineOutput = @(& $fastTarZst $it $Dest 2>&1)
+      $rc = $LASTEXITCODE
+    } finally {
+      $ErrorActionPreference = $previousErrorAction
+    }
+    if ($rc -eq 0) {
+      foreach ($line in $engineOutput) {
+        $candidate = [string]$line
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $out = $candidate }
+      }
+      if (-not $out) { $rc = 1 }
+    }
+  } else {
+    $out = Join-Path $Dest ($leaf + $fmt.ext)
+    Push-Location -LiteralPath $parent
+    try {
+      & $tar $fmt.sw "--options=$opts" -c -f "$out" -- "$leaf"   # names hidden (faster)
+      $rc = $LASTEXITCODE
+    } finally { Pop-Location }
+  }
+
+  if ($rc -eq 0 -and $out -and (Test-Path -LiteralPath $out -PathType Leaf)) {
     $sz = (Get-Item -LiteralPath $out).Length
-    Write-Host ("  " + (T '✓ 完了' '✓ Done') + ("  {0:N1} MB" -f ($sz/1MB))) -ForegroundColor Green
+    Write-Host ("  " + (T '✓ 完了' '✓ Done') + ("  {0:N1} MB  →  {1}" -f ($sz/1MB), $out)) -ForegroundColor Green
     $okCount++
   } else {
+    if ($useFastTarZst) {
+      foreach ($line in $engineOutput) { Write-Host ("  " + [string]$line) -ForegroundColor DarkRed }
+    }
     Write-Host ("  " + (T "✗ 失敗 (code $rc)" "✗ Failed (code $rc)")) -ForegroundColor Red; $failCount++
   }
 }
