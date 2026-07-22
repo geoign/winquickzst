@@ -1,19 +1,21 @@
 # Third-party notices
 
-`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `3602902c6be5a30ac2138ee194d546c0a2acd10a`.
+`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `cb7904bedad6914cdea9ff513860024552af62a2`.
 
-- Binary SHA-256: `620775FDA4C1D456B601E9399F593B5E96265173107F52C0A994BC244A2471DA`
-- Version: `0.5.0`
+- Binary SHA-256: `451B2AD43B6852994977B063DEF91FC9B8DD3B0D55EB478DFBF00278124FDE93`
+- Version: `0.6.0`
 - Target: `x86_64-pc-windows-msvc`
 - `fast-tarzst` license: MIT
 
 The build vendors `tar` crate 0.4.46 under its original MIT OR Apache-2.0
 license. Local performance extensions add a reusable 8 MiB large-entry copy
-buffer and a Windows-specific, bounded parallel read-ahead pipeline. The
-WinQuickZst build uses up to 16 I/O workers, a 128-entry window, and a 16 MiB
-per-file buffering limit; larger files retain direct streaming. Tar archive
-compatibility is unchanged. The vendored source and patch description are
-included in the `fast-tarzst` source repository.
+buffer and a Windows-specific read-ahead pipeline: a streaming directory
+scan feeds a worker pool that reads files of every size in chunks through a
+shared buffer pool, bounded by a byte budget that defaults to one eighth of
+physical RAM (512 MiB to 4 GiB). Entries are written as their data becomes
+ready (`--ordered` restores deterministic order). Tar archive compatibility
+is unchanged. The vendored source and patch description are included in the
+`fast-tarzst` source repository.
 
 The binary build uses the following Rust crates under the license expressions published in their Cargo packages:
 
@@ -35,6 +37,7 @@ The binary build uses the following Rust crates under the license expressions pu
 | shlex | 2.0.1 | MIT OR Apache-2.0 |
 | tar | 0.4.46 | MIT OR Apache-2.0 |
 | windows-link | 0.2.1 | MIT OR Apache-2.0 |
+| windows-sys | 0.59.0 | MIT OR Apache-2.0 |
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 |
 | zstd | 0.13.3 | MIT |
 | zstd-safe | 7.2.4 | MIT OR Apache-2.0 |

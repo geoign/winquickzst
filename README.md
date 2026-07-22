@@ -8,10 +8,10 @@ A Windows right-click tool that creates a fast `tar.zst` archive directly in a d
 
 - Right-click a folder → **Compress to tar.zst with WinQuickZst…** → choose a compression level → choose a destination.
 - Every level makes the available logical CPUs available to Zstandard workers.
-- Up to 16 I/O workers read small and medium files ahead in archive order so
-  the Zstandard workers do not stall on serialized file-open latency.
-- Read-ahead is bounded to 128 entries and 16 MiB per file; larger files stream
-  directly without being held fully in memory.
+- I/O workers read files of every size ahead in chunks, so large files no
+  longer fall back to single-stream reads.
+- Read-ahead memory is bounded by a byte budget that defaults to one eighth
+  of physical RAM, and entries are written as their data becomes ready.
 - During compression, the console updates processed size, output size,
   effective speed, and elapsed time once per second.
 - Output names use `folder_YYYYMMDD-HHMMSS.tar.zst`.
@@ -79,10 +79,13 @@ tar --zstd -xf folder_YYYYMMDD-HHMMSS.tar.zst
 
 ## Notes
 
-- The theoretical read-ahead memory limit is about 2 GiB; actual use depends on
-  the size distribution of files currently in the window.
-- Startup performs one metadata scan to plan bounded read-ahead. Progress shows
-  actual activity rather than a percentage or estimated remaining time.
+- Read-ahead memory defaults to one eighth of physical RAM (512 MiB to 4 GiB);
+  actual use depends on the file size distribution.
+- Archive entry order is nondeterministic by default, since entries are written
+  as their data becomes ready; the archived files and the extraction result
+  are identical either way.
+- Progress shows actual activity rather than a percentage or estimated
+  remaining time.
 - If the source changes during compression, archive-wide consistency is not guaranteed.
 - A power loss or forced termination can leave a partial `.tar.zst` file.
 - NTFS ACLs, alternate data streams, Unix ownership, and executable bits are not preserved completely.
