@@ -1,17 +1,18 @@
 # Third-party notices
 
-`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `e016f4d47b10a2c4211f6f53db40b8654e3b87d6`.
+`bin/fast-tarzst.exe` was built from the local `fast-tarzst` Rust project at commit `3602902c6be5a30ac2138ee194d546c0a2acd10a`.
 
-- Binary SHA-256: `2729E77A4DA60FA3FBB2939D6F254C07891FCE87ED6A27745C889E0DA74F3631`
-- Version: `0.4.0`
+- Binary SHA-256: `620775FDA4C1D456B601E9399F593B5E96265173107F52C0A994BC244A2471DA`
+- Version: `0.5.0`
 - Target: `x86_64-pc-windows-msvc`
 - `fast-tarzst` license: MIT
 
 The build vendors `tar` crate 0.4.46 under its original MIT OR Apache-2.0
-license. A local performance patch makes archive entries of 1 MiB or larger
-use a reusable 8 MiB per-thread copy buffer; smaller entries retain the
-upstream copy path. Tar headers, traversal behavior, metadata handling, and the
-archive format are unchanged. The vendored source and patch description are
+license. Local performance extensions add a reusable 8 MiB large-entry copy
+buffer and a Windows-specific, bounded parallel read-ahead pipeline. The
+WinQuickZst build uses up to 16 I/O workers, a 128-entry window, and a 16 MiB
+per-file buffering limit; larger files retain direct streaming. Tar archive
+compatibility is unchanged. The vendored source and patch description are
 included in the `fast-tarzst` source repository.
 
 The binary build uses the following Rust crates under the license expressions published in their Cargo packages:
